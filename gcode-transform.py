@@ -26,67 +26,12 @@ rotate: bool = False
 if args.axis == 'Z':
     rotate = True
 
-class wurschtline():
+class codeline():
     input: str = ""
     def __init__(self, input):
         self.input = input.strip()
-    def get_data(self):
-        return(self.input)
-    def get_text(self):
-        return(self.input)
-
-
-class codeline():
-    def __init__(self, input):
-        self.input: str = ""
-        self.line: str = []
-        self.input = input.strip()
-        self.line = input.split(' ')
-        # print(self.line[0])
-        self.parameter = {}
-        self.parameter[self.line[0][0]] = int(self.line[0][1])
-        for item in self.line[1:]:
-            self.parameter[item[0]] = float(item[1:])
-        if args.axis == "X" and "Y" in self.parameter:
-            self.flipX()
-        elif args.axis == "Y" and "X" in self.parameter:
-            self.flipY()
-        elif args.axis == "Z":
-            self.rotate()
-
-    def get_data(self):
-        data = ""
-        for key, value in self.parameter.items():
-            data = data + key + str(value) + ' '
-        return(data.strip())
-    def flipX(self):
-        self.parameter['Y'] = self.parameter['Y']*-1
-    def flipY(self):
-        self.parameter['X'] = self.parameter['X']*-1
-    def rotate(self):
-        if "X" and "Y" in self.parameter:
-            tmp = self.parameter['X']
-            self.parameter['X'] = self.parameter['Y']
-            self.parameter['Y'] = tmp*-1
-    def get_text(self):
-        return(self.input)
-
-class g01_line(codeline):
-    True
-class g23_line(codeline):
-    def ch_dir(self):
-        if self.parameter['G'] == 2:
-            self.parameter['G'] = 3
-        else:
-            self.parameter['G'] = 2
-    def flipX(self):
-        self.ch_dir()
-        self.parameter['Y'] = self.parameter['Y']*-1
-        self.parameter['J'] = self.parameter['J']*-1
-    def flipY(self):
-        self.ch_dir()
-        self.parameter['X'] = self.parameter['X']*-1
-        self.parameter['I'] = self.parameter['I']*-1
+        self.comment = ''
+        self.movecommand = False
     def rotate(self):
         if "X" and "Y" in self.parameter:
             tmp = self.parameter['X']
@@ -96,6 +41,52 @@ class g23_line(codeline):
             tmp = self.parameter['I']
             self.parameter['I'] = self.parameter['J']
             self.parameter['J'] = tmp*-1
+    def flip(self):
+        self.parameter[flip_coordinate] = self.parameter[flip_coordinate]*-1
+    def get_data(self):
+        if not self.movecommand:
+            return(self.input)
+        data = ""
+        for key, value in self.parameter.items():
+            data = data + key + str(value) + ' '
+        if not self.comment == '':
+            data = data + ';' + self.comment
+        return(data.strip())
+
+
+class g01_line(codeline):
+    def __init__(self, input):
+        self.movecommand = True
+        self.input: str = ""
+        self.comment: str = ""
+        self.line: str = []
+        self.input = input.strip()
+        if ';' in self.input:
+            tmp = self.input.split(';')
+            self.input = tmp[0].strip()
+            self.comment = tmp[1]
+        self.line = self.input.split(' ')
+        self.parameter = {}
+        self.parameter[self.line[0][0]] = int(self.line[0][1])
+        for item in self.line[1:]:
+            self.parameter[item[0]] = float(item[1:])
+        if args.axis == "Z":
+            self.rotate()
+        elif flip_coordinate in self.parameter:
+            self.flip()
+
+
+class g23_line(g01_line):
+    def ch_dir(self):
+        if self.parameter['G'] == 2:
+            self.parameter['G'] = 3
+        else:
+            self.parameter['G'] = 2
+    def flip(self):
+        self.ch_dir()
+        self.parameter[flip_coordinate] = self.parameter[flip_coordinate]*-1
+        self.parameter[flip_arc_offset] = self.parameter[flip_arc_offset]*-1
+     
         
 infile = open(args.filename, 'r')
 # i = 0
@@ -108,7 +99,7 @@ for line in infile:
     elif line.startswith("G2 ") or line.startswith("G3 "):
         lines.append(g23_line(line))
     else:
-        lines.append(wurschtline(line))
+        lines.append(codeline(line))
 
 
 if args.output == None:

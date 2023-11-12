@@ -98,6 +98,8 @@ for line in infile:
         lines.append(g01_line(line))
     elif line.startswith("G2 ") or line.startswith("G3 "):
         lines.append(g23_line(line))
+    elif line.startswith("G81"):
+        lines.append(g01_line)
     else:
         lines.append(codeline(line))
 
